@@ -11,12 +11,6 @@ class Book
     private $connect;
     private $tableName;
 
-    private $description_ru;
-    private $isbn2;
-    private $isbn3;
-    private $isbn4;
-    private $isbn_wrong;
-
     function __construct(ConfigDb $db) {
         $this->connect = $db->connectDb(); 
         $this->tableName = self::TABLENAME;
@@ -34,6 +28,22 @@ class Book
         }
         return null;
     }
+
+    public function setIsbn (int $id, string $isbn, string $field) {
+        if($this->connect) {
+            $sql = "UPDATE $this->tableName
+                SET $field = :isbn
+                WHERE id = :id
+            ";
+            $stmt = $this->connect->prepare($sql);
+            $stmt->bindValue(':isbn', $isbn, PDO::PARAM_STR);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmt->execute();
+            return $this->getBook($id);
+        }
+        return null;
+    }
+
 
     public function getIdS() {
        return $this->ids;
