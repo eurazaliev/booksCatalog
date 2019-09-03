@@ -1,0 +1,5 @@
+host = "localhost";
+database = "dbname"; // имя базы данных
+user = "user"; // имя пользователя
+password = "password"; // пароль
+charset = 'utf8';
