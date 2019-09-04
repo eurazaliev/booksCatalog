@@ -35,7 +35,6 @@ class BooksCatalog
 
     private function fetchMaxId () {
         if($this->connect) {
-//            $sql = "SELECT MAX(id) FROM $this->tableName WHERE id > $this->minId LIMIT $this->limit";
             $sql = "SELECT
                 MAX(ID)
                 FROM

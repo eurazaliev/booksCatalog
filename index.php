@@ -16,13 +16,16 @@ const CHUNKSIZE = 1000;
 
 $isbnChecker = new Isbn();
 $db = new ConfigDb;
+$recursiveImplode = new RecursiveImplode;
 
 /* можно начать поиск с определенного id
 */
-$lastId = 63007;//61100;
+$lastId = 62011;//61100;
 
-/* тут проходим всю таблицу, разбивая ее на кусочки и находим id книг, где есть что-то похожее на isbn в поле description_ru 
-   на выходе получаем массив массивов, где ключ внешнего массива = id_книги, а внутренний массив разбитые на части по пробелу куски текста,
+/* тут проходим всю таблицу, разбивая ее на кусочки и находим id книг, 
+   где есть что-то похожее на isbn в поле description_ru 
+   на выходе получаем массив массивов, где ключ внешнего массива = id_книги,
+   а внутренний массив разбитые на части по пробелу куски текста,
    содержащие 10 или более цифр, разделенных любым количеством символов
 */
 do  {
@@ -42,22 +45,27 @@ do  {
             $recursiveImplode = new RecursiveImplode;
             $toStr = $recursiveImplode->recursiveImplode($matches);
             if (strlen($toStr) >= 10) {
-                $isbnExtractor = new IsbnExtractor( $isbnChecker, $piece);
+                $isbnExtractor = new IsbnExtractor($isbnChecker);
+                $isbnExtractor->setStringContaining($piece);
                 $correctIsbns = array_merge($correctIsbns, $isbnExtractor->getCorrectIsbns());
                 $wrongIsbns = array_merge($wrongIsbns, $isbnExtractor->getWrongIsbns());
             }
         }
+        
+        foreach ($correctIsbns as $correctIsbn) {
+            $isbnExtractor = new IsbnExtractor($isbnChecker);
+            $bookObj2 = new Book($db);
+            if ($result = $bookObj2->findIsbn($book->id, $correctIsbn, $isbnExtractor, $isbnChecker)) {
+                echo "GOTCHA! $result" . PHP_EOL;
+            }
+        }
         if ($correctIsbns) {
             echo "CORRECT ISBNS FOR THE $book->id FOUND: ";
-            $bookToUpd = new Book($db);
-            $bookToUpd->setIsbn($book->id, $correctIsbns[0], 'isbn2');
-            $recursiveImplode = new RecursiveImplode;
             printf($recursiveImplode->recursiveImplode($correctIsbns, ','));
             echo PHP_EOL;
         }
         if ($wrongIsbns) {
             echo "WRONG ISBNS FOR THE $book->id FOUND: ";
-            $recursiveImplode = new RecursiveImplode;
             printf($recursiveImplode->recursiveImplode($wrongIsbns, ','));
             echo PHP_EOL;
         }

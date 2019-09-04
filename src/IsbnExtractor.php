@@ -10,20 +10,38 @@ class IsbnExtractor
     private $correctIsbns;
     private $wrongIsbns;
 
-    function __construct(Isbn $isbnChecker, string $string) {
+
+    function __construct(Isbn $isbnChecker) {    
+//    function __construct(Isbn $isbnChecker, string $string) {    
         $this->isbnCheker = $isbnChecker; 
-        $this->stringContaining = $string;
         $this->correctIsbns = [];
         $this->wrongIsbns = [];
-        $this->fetchIsbns();
     }
-    
+
+    public function setStringContaining (string $string) {
+        $this->stringContaining = $string;
+        if (strlen($string) > 10) $this->fetchIsbns();
+    }
+
     public function getCorrectIsbns() :array {
         return $this->correctIsbns;
     }
 
     public function getWrongIsbns() :array {
         return $this->wrongIsbns;
+    }
+    
+    public function getAllIsbns() :array {
+        return array_merge($this->correctIsbns, $this->wrongIsbns);
+    }
+
+    public function reset() {
+        unset($this->correctIsbns);
+        unset($this->wrongIsbns);
+        unset($this->stringContaining);
+        $this->correctIsbns = [];
+        $this->wrongIsbns = [];
+
     }
 
     // заполняет массивы корректных и некорректных isbn, найденных в строке
@@ -33,6 +51,7 @@ class IsbnExtractor
         $wrongIsbns = [];
         preg_match_all('!\d!', $this->stringContaining, $digitsAndItsPosArray, PREG_OFFSET_CAPTURE);
         $potentialIsbn = null;
+//        var_dump($digitsAndItsPosArray);
         foreach ($digitsAndItsPosArray as $digitAndPos) {
             /* вот в этом цикле перебираем каждую цифру из кусочков descriprion_ru
                если оказывается, что из цифр таки складывается isdn, то сохраняем его.
@@ -41,7 +60,10 @@ class IsbnExtractor
             $cut = false;
             foreach ($digitAndPos as $digit) {
                 $potentialIsbn .= $digit[0];
-                // если в предыдущей ротации уже нашли isbn, то первым символом подстроки, содержащим анализируемые данные считаем следующий содержащий цифру
+                /* если в предыдущей ротации уже нашли isbn, то первым
+                   символом подстроки, содержащим анализируемые данные
+                   считаем следующий содержащий цифру
+                */
                 if ($cut) $firstDigitPos = $digit[1];
                 $subStrContDigits = substr($this->stringContaining, $firstDigitPos, $digit[1] - $firstDigitPos);
                 /* если найденная цифровая комбинация проходит проверку как isbn
@@ -52,7 +74,15 @@ class IsbnExtractor
                     $potentialIsbn = null;
                     $cut = true;
                 }
-                elseif (strlen($potentialIsbn) == 10 or strlen($potentialIsbn) == 13) $this->wrongIsbns[] = $potentialIsbn; 
+//                elseif (strlen($potentialIsbn) == 10 or strlen($potentialIsbn) == 13) $this->wrongIsbns[] = $potentialIsbn; 
+                elseif (strlen($potentialIsbn) == 10 and count($digitAndPos) < 13) {
+                    $this->wrongIsbns[] = $potentialIsbn; 
+                    $cut = true;
+                }
+                elseif (strlen($potentialIsbn) == 13) {
+                    $this->wrongIsbns[] = $potentialIsbn; 
+                    $cut = true;
+                }
                 else { 
                     $cut = false;
                 }
