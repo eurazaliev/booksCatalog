@@ -2,7 +2,7 @@
 namespace App;
 
 use App\ConfigDb;
-use \ PDO;
+use PDO;
 
 class BooksCatalog
 {

@@ -1,7 +1,8 @@
 <?php
 namespace App;
 
-use \PDO;
+use PDO;
+use PDOException;
 
 class ConfigDb
 {
@@ -30,7 +31,11 @@ class ConfigDb
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
         ];
-        $pdo = new \PDO($dsn, $this->user, $this->password, $opt);
-        return $pdo;
+        try {
+            $pdo = new \PDO($dsn, $this->user, $this->password, $opt);
+            return $pdo;
+        } catch(PDOException $e) {
+            die("Database connection failed: " . $e->getMessage());
+        }
     }
 }

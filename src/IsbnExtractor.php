@@ -20,7 +20,7 @@ class IsbnExtractor
 
     public function setStringContaining (string $string) {
         $this->stringContaining = $string;
-        if (strlen($string) > 10) $this->fetchIsbns();
+        if (strlen($string) >= 10) $this->fetchIsbns();
     }
 
     public function getCorrectIsbns() :array {
@@ -51,7 +51,6 @@ class IsbnExtractor
         $wrongIsbns = [];
         preg_match_all('!\d!', $this->stringContaining, $digitsAndItsPosArray, PREG_OFFSET_CAPTURE);
         $potentialIsbn = null;
-//        var_dump($digitsAndItsPosArray);
         foreach ($digitsAndItsPosArray as $digitAndPos) {
             /* вот в этом цикле перебираем каждую цифру из кусочков descriprion_ru
                если оказывается, что из цифр таки складывается isdn, то сохраняем его.
@@ -74,7 +73,6 @@ class IsbnExtractor
                     $potentialIsbn = null;
                     $cut = true;
                 }
-//                elseif (strlen($potentialIsbn) == 10 or strlen($potentialIsbn) == 13) $this->wrongIsbns[] = $potentialIsbn; 
                 elseif (strlen($potentialIsbn) == 10 and count($digitAndPos) < 13) {
                     $this->wrongIsbns[] = $potentialIsbn; 
                     $cut = true;
