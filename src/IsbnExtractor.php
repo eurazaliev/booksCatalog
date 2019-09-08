@@ -99,11 +99,7 @@ class IsbnExtractor
                     $subStrContDigits1 = substr($this->stringContaining, $array[0]['pos'], $array[9]['pos'] - $array[0]['pos']);
                     /** проверяем, что среди разделителей нет чего-либо кроме -
                         в случае, если кусок последовательности прошел проверку на isbn10, то запоминаем его **/
-                    if (
-                        !(preg_match('/[^-0-9]/', $subStrContDigits1)) and
-                        $this->isbnCheker->validation->isbn(substr($potentialIsbn, 0, self::ISBN10)) and
-                        !$this->isbnCheker->validation->isbn($potentialIsbn) 
-                       ) {
+                    if ($this->checkIsbn10($subStrContDigits1, $potentialIsbn)) {
                              $this->correctIsbns[] = substr($potentialIsbn, 0, self::ISBN10);
                              /** при этом отматываем указатель массива на 3 элемента назад 
                                  нужно это в связи с тем, что если в последовательности
@@ -114,17 +110,13 @@ class IsbnExtractor
                              prev($digitAndPos);
                              // и убираем из массива анализируемой последовательсности первую цифру
                              array_shift($array);
-                       }
+                     }
                     /** проверяем, что среди разделителей нет чего-либо кроме -
                         в случае, если кусок последовательности прошел проверку на isbn13, то запоминаем его **/
-                    elseif (
-                        !(preg_match('/[^-0-9]/', $subStrContDigits)) and
-                        !$this->isbnCheker->validation->isbn(substr($potentialIsbn, 0, self::ISBN10)) and
-                        $this->isbnCheker->validation->isbn($potentialIsbn)
-                       ) {
-                             $this->correctIsbns[] = $potentialIsbn;
-                             array_shift($array);
-                       }
+                    else if ($this->checkIsbn13($subStrContDigits, $potentialIsbn)) {
+                        $this->correctIsbns[] = $potentialIsbn;
+                        array_shift($array);
+                    }
                     /** все остальные последовательнсти цифр считаем неправильными isbn **/
                     elseif (
                         !$this->isbnCheker->validation->isbn(substr($potentialIsbn, 0, self::ISBN10)) and
@@ -138,4 +130,25 @@ class IsbnExtractor
             }
         }
     }
+    
+    private function checkIsbn13 (string $subStrContDigits, int $potentialIsbn) :bool 
+        {
+        if (
+            !(preg_match('/[^-0-9]/', $subStrContDigits)) and
+            !$this->isbnCheker->validation->isbn(substr($potentialIsbn, 0, self::ISBN10)) and
+            $this->isbnCheker->validation->isbn($potentialIsbn)
+            ) return true;
+            else return false;
+        }
+
+    private function checkIsbn10 (string $subStrContDigits, string $potentialIsbn) :bool 
+        {
+        if (
+            !(preg_match('/[^-0-9]/', $subStrContDigits)) and
+            $this->isbnCheker->validation->isbn(substr($potentialIsbn, 0, self::ISBN10)) and
+            !$this->isbnCheker->validation->isbn($potentialIsbn) 
+            ) return true;
+            else return false;
+        }
+
 }

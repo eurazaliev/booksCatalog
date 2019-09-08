@@ -31,7 +31,7 @@ class IsbnExtractorTest extends \PHPUnit\Framework\TestCase
                ->will($this->returnCallback(
                    function ($isbn) {
                        if (in_array($isbn, self::CORRECTISBNS)) return true;
-                       return false;
+                       else return false;
                    }
 
                ));
@@ -82,7 +82,9 @@ class IsbnExtractorTest extends \PHPUnit\Framework\TestCase
         // в любом случае тут должен быть массив
         $this->assertGreaterThan(3, $extractor->getAllIsbns());
         $this->assertGreaterThan(2, $extractor->getWrongIsbns());
+    
         $this->assertCount(1, $extractor->getCorrectIsbns());
+        
         $extractor->reset();
         // у нас пробел не может быть разделителем, поэтому такое сечетание не будет isbn
         $testString = '123456789' . ' ' . 0;
