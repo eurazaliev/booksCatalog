@@ -14,6 +14,7 @@
     }
   },
     "require": {
-        "fale/isbn": "^3.0"
+        "fale/isbn": "^3.0",
+        "phpunit/phpunit": "^8.3"
     }
 }

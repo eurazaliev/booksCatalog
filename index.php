@@ -19,7 +19,7 @@ $recursiveImplode = new RecursiveImplode;
 
 /* можно начать поиск с определенного id
 */
-$lastId = 63012;//61100;
+$lastId = 0; //63012;//61100;
 
 /** тут проходим всю таблицу, разбивая ее на кусочки и находим id книг, 
    где есть что-то похожее на isbn в поле description_ru 
@@ -52,7 +52,7 @@ do  {
                 $wrongIsbns = array_merge($wrongIsbns, $isbnExtractor->getWrongIsbns());
             }
         }
-        echo "PROCESSING BOOK ID $book->id ", PHP_EOL;
+//        echo "PROCESSING BOOK ID $book->id ", PHP_EOL;
         foreach ($correctIsbns as $correctIsbn) {
             echo "PROCESSING ISDN: $correctIsbn ", PHP_EOL;
             $isbnExtractor = new IsbnExtractor($isbnChecker);

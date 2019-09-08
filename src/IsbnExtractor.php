@@ -9,10 +9,11 @@ class IsbnExtractor
     private $stringContaining;
     private $correctIsbns;
     private $wrongIsbns;
-
+    
+    const ISBN10 = 10;
+    const ISBN13 = 13;
 
     function __construct(Isbn $isbnChecker) {    
-//    function __construct(Isbn $isbnChecker, string $string) {    
         $this->isbnCheker = $isbnChecker; 
         $this->correctIsbns = [];
         $this->wrongIsbns = [];
@@ -20,7 +21,7 @@ class IsbnExtractor
 
     public function setStringContaining (string $string) {
         $this->stringContaining = $string;
-        if (strlen($string) >= 10) $this->fetchIsbns();
+        if (strlen($string) >= self::ISBN10) $this->fetchIsbns();
     }
 
     public function getCorrectIsbns() :array {
@@ -44,7 +45,9 @@ class IsbnExtractor
 
     }
 
-    // заполняет массивы корректных и некорректных isbn, найденных в строке
+    /** заполняет массивы корректных и некорректных isbn, найденных в строке
+        метод получился очень большим, но подробить его никак, ибо логика непростая
+        выглядит код вымученно, но тесты проходит см /tests  **/
     private function fetchIsbns() {
         // разбиваем подстроку на массив, содержащий цифры и номера из позиций в строке
         $correctIsbns = [];
@@ -52,38 +55,86 @@ class IsbnExtractor
         preg_match_all('!\d!', $this->stringContaining, $digitsAndItsPosArray, PREG_OFFSET_CAPTURE);
         $potentialIsbn = null;
         foreach ($digitsAndItsPosArray as $digitAndPos) {
-            /* вот в этом цикле перебираем каждую цифру из кусочков descriprion_ru
-               если оказывается, что из цифр таки складывается isdn, то сохраняем его.
-            */
+            /** вот в этом цикле перебираем каждую цифру из кусочков descriprion_ru
+                если оказывается, что из цифр таки складывается isdn, то сохраняем его.**/
             $firstDigitPos =  $digitAndPos[array_key_first($digitAndPos)][1]; 
-            $cut = false;
-            foreach ($digitAndPos as $digit) {
-                $potentialIsbn .= $digit[0];
-                /* если в предыдущей ротации уже нашли isbn, то первым
-                   символом подстроки, содержащим анализируемые данные
-                   считаем следующий содержащий цифру
-                */
-                if ($cut) $firstDigitPos = $digit[1];
-                $subStrContDigits = substr($this->stringContaining, $firstDigitPos, $digit[1] - $firstDigitPos);
-                /* если найденная цифровая комбинация проходит проверку как isbn
-                   и содержит только лишь - и цифры, то считаем такой isbn корректным
-                */
-                if (($this->isbnCheker->validation->isbn($potentialIsbn)) and !(preg_match('/[^-0-9]/', $subStrContDigits))) { 
-                    $this->correctIsbns[] = $potentialIsbn;
-                    $potentialIsbn = null;
-                    $cut = true;
+            $subStrContDigits = substr($this->stringContaining, $firstDigitPos);
+
+            while(list($key, $val) = each($digitAndPos)) {
+                $potentialIsbn = null;
+                $digit = $val;
+                /** тут формируем массив, содержащий анализируемый на isbn кусок
+                    для чего в массив добавляем сведения о следующей цифре, включающие
+                    саму цифру и номер ее позиции в строке**/
+                $potentialIsbnArray['digit'] = $digit[0];
+                $potentialIsbnArray['pos'] = $digit[1];
+                $array[] = $potentialIsbnArray;
+                // из цифр, содержащихся в массиве собираем потенциальный isbn в строку
+                foreach ($array as $key => $value) {$potentialIsbn .=  $value['digit'];};
+                /** а тут выделяем подстроку, из анализируемой начинающуюся
+                    с позии первой цифры и заканчивающуюся текущей цифрой**/
+                $subStrContDigits = substr($this->stringContaining, $array[0]['pos'], $digit[1] - $array[0]['pos'] + 1);
+                /** вот это условие оно для поиска isdn в конце строки, когда
+                    нам выделять isbn нужно не с начала, а с конца строки**/
+                if ($digitAndPos[array_key_last($digitAndPos)][1] == $digit[1]) {
+                    if (strlen($potentialIsbn) == 13) {
+                        $subStrContDigits1 = substr($this->stringContaining, $array[3]['pos'], $array[12]['pos'] - $array[3]['pos'] + 1);
+                    }
+                    elseif (strlen($potentialIsbn) == 10) {
+                        $subStrContDigits1 = substr($this->stringContaining, $array[3]['pos'], $array[9]['pos'] - $array[3]['pos'] + 1);
+                    }
+                    else {$subStrContDigits1 = null;}
+                    if (
+                        !(preg_match('/[^-0-9]/', $subStrContDigits1)) and
+                        $this->isbnCheker->validation->isbn(substr($potentialIsbn, -10, self::ISBN10))
+                        ) { 
+                            $this->correctIsbns[] = substr($potentialIsbn, -10, self::ISBN10);
+                            array_shift($array);
+                          }
                 }
-                elseif (strlen($potentialIsbn) == 10 and count($digitAndPos) < 13) {
-                    $this->wrongIsbns[] = $potentialIsbn; 
-                    $cut = true;
+                /** а тут основная логика. анализирую последовательность цифр, которые составляют
+                    потенциальный isbn. их 13**/
+                if (strlen($potentialIsbn) == self::ISBN13) {
+                    // для случая, если у нас окажется isbn10 мы выделяем подстроку содержащую 10 цифр
+                    $subStrContDigits1 = substr($this->stringContaining, $array[0]['pos'], $array[9]['pos'] - $array[0]['pos']);
+                    /** проверяем, что среди разделителей нет чего-либо кроме -
+                        в случае, если кусок последовательности прошел проверку на isbn10, то запоминаем его **/
+                    if (
+                        !(preg_match('/[^-0-9]/', $subStrContDigits1)) and
+                        $this->isbnCheker->validation->isbn(substr($potentialIsbn, 0, self::ISBN10)) and
+                        !$this->isbnCheker->validation->isbn($potentialIsbn) 
+                       ) {
+                             $this->correctIsbns[] = substr($potentialIsbn, 0, self::ISBN10);
+                             /** при этом отматываем указатель массива на 3 элемента назад 
+                                 нужно это в связи с тем, что если в последовательности
+                                 из 13 проанализированных цифр, мы нашли isbn10
+                                 то следующий анализ надо чать десятой цифры, а не с 13й**/
+                             prev($digitAndPos);
+                             prev($digitAndPos);
+                             prev($digitAndPos);
+                             // и убираем из массива анализируемой последовательсности первую цифру
+                             array_shift($array);
+                       }
+                    /** проверяем, что среди разделителей нет чего-либо кроме -
+                        в случае, если кусок последовательности прошел проверку на isbn13, то запоминаем его **/
+                    elseif (
+                        !(preg_match('/[^-0-9]/', $subStrContDigits)) and
+                        !$this->isbnCheker->validation->isbn(substr($potentialIsbn, 0, self::ISBN10)) and
+                        $this->isbnCheker->validation->isbn($potentialIsbn)
+                       ) {
+                             $this->correctIsbns[] = $potentialIsbn;
+                             array_shift($array);
+                       }
+                    /** все остальные последовательнсти цифр считаем неправильными isbn **/
+                    elseif (
+                        !$this->isbnCheker->validation->isbn(substr($potentialIsbn, 0, self::ISBN10)) and
+                        !$this->isbnCheker->validation->isbn($potentialIsbn)
+                       ) {
+                             $this->wrongIsbns[] = $potentialIsbn;
+                             array_shift($array);
+                       }
                 }
-                elseif (strlen($potentialIsbn) == 13) {
-                    $this->wrongIsbns[] = $potentialIsbn; 
-                    $cut = true;
-                }
-                else { 
-                    $cut = false;
-                }
+
             }
         }
     }

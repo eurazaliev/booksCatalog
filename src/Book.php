@@ -17,6 +17,7 @@ class Book
     const CORRECTMULTIFIELDSTOINSERT = ['isbn4'];
     const WRONGMULTIFIELDSTOINSERT = ['isbn_wrong'];
     const ISBNSDEVIDER = ', ';
+    const ISBNDEVIDER2 = ',';
 
     private $connect;
     private $tableName;
@@ -89,7 +90,6 @@ class Book
     }
     
     private function insertIsbn (int $bookId, int $isbn, array $fields) {
-
         foreach ($fields as $field) {
             $book = $this->getBook($bookId);
             if ($book->$field == '' or is_null($book->$field)) {
@@ -155,24 +155,21 @@ class Book
     private function isbnSearcherInIsbnsFields (Object $book, IsbnExtractor $extractor) {
         $isbnSingleFields = self::ISBNSINGLEFIELDS;
         foreach ($isbnSingleFields as $isbnField) {
-            $extractor->setStringContaining($book->$isbnField);
+            if (!is_null($book->$isbnField)) {$extractor->setStringContaining($book->$isbnField);}
             $isbns[$isbnField] = $extractor->getAllIsbns();
             $extractor->reset();
         }
         $isbnMultiFields = self::ISBNMULTIFIELDS;
         foreach ($isbnMultiFields as $isbnField) {
-            $isbnsRaws = explode(",", $book->$isbnField);
-//            var_dump($isbnsRaws);
+            $isbnsRaws = explode(self::ISBNDEVIDER2, $book->$isbnField);
             $counter = 0;
             foreach ($isbnsRaws as $isbnRaw) {
-                $extractor->setStringContaining($isbnRaw);
+                if (!is_null($book->$isbnField)) {$extractor->setStringContaining($isbnRaw);}
                 $isbns[$isbnField . "[$counter]"] = $extractor->getAllIsbns();
                 $extractor->reset();
                 $counter++;
             }
         }
-//        var_dump($isbns);
-//        die;
         return $isbns;
     }
 
