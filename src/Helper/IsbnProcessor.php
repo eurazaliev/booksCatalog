@@ -30,7 +30,7 @@ class IsbnProcessor
         foreach ($isbns as $isbn) {
             $bookObj = new Book($db);
             if ($result = $bookObj->findIsbn($book->id, $isbn, $this->isbnExtractor, $this->isbnChecker)) {
-                $event = "$wrongOrCorrect ISBN $isbn HAD BEEN FOUND IN description_ru HAVE BEEN FOUND IN $result FIELD; DO LOG ";
+                $event = "$wrongOrCorrect ISBN $isbn HAD BEEN FOUND IN description_ru HAVE BEEN FOUND IN $result FIELD";
                 isset($this->logger) ? $this->logger->writeLog([$book->id, $event]) : null;
             } else {
                 $bookObj3 = new Book($db);
