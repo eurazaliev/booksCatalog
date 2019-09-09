@@ -5,10 +5,11 @@ use Isbn\Isbn as Isbn;
 use App\ConfigDb;
 use App\BooksCatalog;
 use App\Book;
-use App\RecursiveImplode;
+use App\Helper\RecursiveImplode;
 use App\IsbnExtractor;
-use App\Logger;
-use App\FileNameGenerator; 
+use App\Helper\Logger;
+use App\Helper\FileNameGenerator; 
+use App\Helper\IsbnProcessor;
 
 /** у нас в БД может быть 100500 мильенов записей, да еще и под нагрузкой, поэтому обходить БД нужно по кускам размером ну пусть 1000 записей.
    если делать так: "select * from table" можно завесить sql-сервер, а заодно и сервер приложений, когда кончится память от миллиарда объектов
@@ -26,14 +27,12 @@ catch (Exception $e) {
    $logging = false;
 }
 
-
 $isbnChecker = new Isbn();
 $db = new ConfigDb;
-$recursiveImplode = new RecursiveImplode;
 
 /* можно начать поиск с определенного id
 */
-$lastId = 63012;//61100;
+$lastId = 0;
 
 /** тут проходим всю таблицу, разбивая ее на кусочки и находим id книг, 
    где есть что-то похожее на isbn в поле description_ru 
@@ -52,7 +51,6 @@ do  {
         $book = $bookObj->getBook($bookId['id']);
         $correctIsbns = [];
         $wrongIsbns = [];
-        $logRows = [];
         // description_ru делим на кусочки, разделенные пробелом
         $pieces = explode(" ", $book->description_ru);
         // если в каком-то кусочке есть интересующий нас паттерн кладем в выходной массив
@@ -61,70 +59,30 @@ do  {
             $recursiveImplode = new RecursiveImplode;
             $toStr = $recursiveImplode->recursiveImplode($matches);
             /** последовательности менее 10 цифр нас не интересуют.
-               из найденнй последовательности цифр выжимаем
+               из найденной последовательности цифр выжимаем
                корректные и некорректные isbn в массивы **/
             if (strlen($toStr) >= 10) {
                 $isbnExtractor = new IsbnExtractor($isbnChecker);
-                if($book->id == 227) {echo $piece;}
                 $isbnExtractor->setStringContaining($piece);
                 $correctIsbns = array_merge($correctIsbns, $isbnExtractor->getCorrectIsbns());
                 $wrongIsbns = array_merge($wrongIsbns, $isbnExtractor->getWrongIsbns());
             }
         }
         echo "PROCESSING BOOK ID $book->id ", PHP_EOL;
-        foreach ($correctIsbns as $correctIsbn) {
-            echo "PROCESSING ISDN: $correctIsbn ", PHP_EOL;
-            $isbnExtractor = new IsbnExtractor($isbnChecker);
-            $bookObj2 = new Book($db);
-            $result = $bookObj2->findIsbn($book->id, $correctIsbn, $isbnExtractor, $isbnChecker);
-            if (!is_null($result)) {
-                $event = "CORRECT ISBN $correctIsbn HAD BEEN FOUND IN description_ru HAVE BEEN FOUND IN $result FIELD";
-                echo $event . PHP_EOL;
-                $logging ? $logger->writeLog([$book->id, $event]) : null;
-            } else {
-                $bookObj3 = new Book($db);
-                $isbnExtractor->reset();
-                try {
-                    $field = $bookObj3->addCorrectIsbn($book->id, $correctIsbn, $isbnExtractor, $isbnChecker);
-                    if (!is_null($field)) {
-                        $event = "CORRECT ISBN $correctIsbn HAD BEEN FOUND IN description_ru AND HAD NOT FOUND IN ISBNS FIELDS, SO $correctIsbn ADDED TO BOOK INTO $field" . PHP_EOL;
-                        echo $event . PHP_EOL;
-                        $logging ? $logger->writeLog([$book->id, $event]) : null;
-                    }
-                }
-                catch (Exception $e) {
-                    $event = "FAIL TO ADD ISBN $correctIsbn TO BOOK: $book->id". $e->getMessage();
-                    echo $event  . PHP_EOL;
-                    $logging ? $logger = [$book->id, $event] : null;
-                }
-            }
-        }
-        foreach ($wrongIsbns as $wrongIsbn) {
-            $isbnExtractor = new IsbnExtractor($isbnChecker);
-            $bookObj2 = new Book($db);
-            if ($result = $bookObj2->findIsbn($book->id, $wrongIsbn, $isbnExtractor, $isbnChecker)) {
-                $event = "WRONG ISBN $wrongIsbn HAD BEEN FOUND IN description_ru HAVE BEEN FOUND IN $result FIELD; DO LOG ";
-                $logging ? $logger->writeLog([$book->id, $event]) : null;
-                echo $event . PHP_EOL;
-            } else {
-                $bookObj3 = new Book($db);
-                $isbnExtractor->reset();
-                try {
-                    $field = $bookObj3->addWrongIsbn($book->id, $wrongIsbn, $isbnExtractor, $isbnChecker);
-                    if (!is_null($field)) {
-                        $event = "WRONG ISBN $wrongIsbn HAD BEEN FOUND IN description_ru AND HAD NOT FOUND IN ISBNS FIELDS, SO $wrongIsbn ADDED TO BOOK INTO $field";
-                        echo $event . PHP_EOL;
-                        $logging ? $logger->writeLog([$book->id, $event]) : null;
-                    }
-                }
-                catch (Exception $e) {
-                    $event = "FAIL TO ADD ISBN $correctIsbn TO BOOK: $book->id". $e->getMessage();
-                    echo $event  . PHP_EOL;
-                    $logging ? $logger->writeLog([$book->id, $event]) : null;
-                }
-            }
-        }
+
+        $correct = true;
+        $isbnExtractor = new IsbnExtractor($isbnChecker);
+
+        $isbnProcessor = new IsbnProcessor($correct, $isbnChecker, $isbnExtractor);
+        $isbnProcessor->setLogger($logger);
+        $isbnProcessor->processFoundedIsbns ($correctIsbns, $db, $book);
+
+        $correct = false;
+        $isbnProcessor = new IsbnProcessor($correct, $isbnChecker, $isbnExtractor);
+        $isbnProcessor->setLogger($logger);
+        $isbnProcessor->processFoundedIsbns ($wrongIsbns, $db, $book);
         
+        $recursiveImplode = new RecursiveImplode;
         if ($correctIsbns) {
             echo "CORRECT ISBNS FOR THE $book->id FOUND: ";
             printf($recursiveImplode->recursiveImplode($correctIsbns, ','));
@@ -135,8 +93,6 @@ do  {
             printf($recursiveImplode->recursiveImplode($wrongIsbns, ','));
             echo PHP_EOL;
         }
-        
-
     }
     $lastId = $booksCatalog->getMaxId();
 }
@@ -144,3 +100,4 @@ while ($lastId);
 
 $logRow = ['','Job ended'];
 $logging ? $logger->writeLog($logRow) : null;
+

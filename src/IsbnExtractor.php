@@ -46,8 +46,8 @@ class IsbnExtractor
     }
 
     /** заполняет массивы корректных и некорректных isbn, найденных в строке
-        метод получился очень большим, но подробить его никак, ибо логика непростая
-        выглядит код вымученно, но тесты проходит см /tests  **/
+        метод получился очень большим, но подробить его никак
+        тесты проходит см /tests  **/
     private function fetchIsbns() {
         // разбиваем подстроку на массив, содержащий цифры и номера из позиций в строке
         $correctIsbns = [];
@@ -77,10 +77,10 @@ class IsbnExtractor
                 /** вот это условие оно для поиска isdn в конце строки, когда
                     нам выделять isbn нужно не с начала, а с конца строки**/
                 if ($digitAndPos[array_key_last($digitAndPos)][1] == $digit[1]) {
-                    if (strlen($potentialIsbn) == 13) {
+                    if (strlen($potentialIsbn) == self::ISBN13) {
                         $subStrContDigits1 = substr($this->stringContaining, $array[3]['pos'], $array[12]['pos'] - $array[3]['pos'] + 1);
                     }
-                    elseif (strlen($potentialIsbn) == 10) {
+                    elseif (strlen($potentialIsbn) == self::ISBN10) {
                         $subStrContDigits1 = substr($this->stringContaining, $array[3]['pos'], $array[9]['pos'] - $array[3]['pos'] + 1);
                     }
                     else {$subStrContDigits1 = null;}

@@ -1,8 +1,8 @@
 <?php
-namespace App;
+namespace App\Helper;
 
 use Exception;
-use App\FileNameGenerator;
+use App\Helper\FileNameGenerator;
 use DateTime;
 
 class Logger extends \Keboola\Csv\CsvWriter
