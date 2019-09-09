@@ -3,12 +3,11 @@ namespace App;
 
 use App\ConfigDb;
 use PDO;
+use App\Config\MainConfig;
 
 class BooksCatalog
 {
     const DEFAULTLIMIT = 10;
-    const DEFAULTOFFSET = 0;
-    const TABLENAME = 'books_catalog';
     
     private $connect;
     private $tableName;
@@ -18,7 +17,7 @@ class BooksCatalog
 
     function __construct(ConfigDb $db, int $minId, int $limit) {
         $this->connect = $db->connectDb(); 
-        $this->tableName = self::TABLENAME;
+        $this->tableName = MainConfig::TABLENAME;
         $this->limit = $limit;
         $this->minId = $minId;
         $this->maxId = $this->fetchMaxId();

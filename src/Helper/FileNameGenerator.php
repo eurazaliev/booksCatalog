@@ -1,8 +1,6 @@
 <?php
 namespace App\Helper;
 
-use Exception;
-
 class FileNameGenerator
 {
     public static function getRandomFileName($path, $extension='')

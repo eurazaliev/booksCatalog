@@ -6,27 +6,19 @@ use PDOException;
 use Exception;
 use App\ConfigDb;
 use App\IsbnExtractor;
+use App\Config\MainConfig;
 use Isbn\Isbn;
 
 class Book
 {
-    const TABLENAME = 'books_catalog';
-    const ISBNSINGLEFIELDS = ['isbn', 'isbn2', 'isbn3'];
-    const ISBNMULTIFIELDS = ['isbn4', 'isbn_wrong'];
-    const CORRECTSINGLEISBLFIELDSTOINSERT = ['isbn2', 'isbn3'];
-    const CORRECTMULTIFIELDSTOINSERT = ['isbn4'];
-    const WRONGMULTIFIELDSTOINSERT = ['isbn_wrong'];
-    const ISBNSDEVIDER = ', ';
-    const ISBNDEVIDER2 = ',';
-
     private $connect;
     private $tableName;
 
     function __construct(ConfigDb $db) {
         $this->connect = $db->connectDb(); 
-        $this->tableName = self::TABLENAME;
+        $this->tableName = MainConfig::TABLENAME;
     }
-    
+    // выбираем книжку по id
     public function getBook(int $id) {
         if($this->connect) {
             $sql = "SELECT * FROM $this->tableName
@@ -40,7 +32,7 @@ class Book
         return null;
     }
 
-    
+    // тут находим исбн в полях таблицы
     public function findIsbn (int $bookId, string $searchIsbn, IsbnExtractor $extractor, Isbn $isbnChecker) {
         $book = $this->getBook($bookId);
         if ($book) {
@@ -55,9 +47,10 @@ class Book
         }
     }
 
+    // функция добавления неправильных исбн
     public function addWrongIsbn (int $bookId, int $isbn, IsbnExtractor $extractor, Isbn $isbnChecker) {
         // добавляем в поля, где может быть несколько isdn
-        $isbnCorrectMultiFields = self::WRONGMULTIFIELDSTOINSERT;
+        $isbnCorrectMultiFields = MainConfig::WRONGMULTIFIELDSTOINSERT;
         try {
             $result = $this->updateIsbn($bookId, $isbn, $isbnCorrectMultiFields);
             if(!is_null($result)) return $result; 
@@ -67,10 +60,10 @@ class Book
         }
     }
 
-    
+    // соотвественно правильных
     public function addCorrectIsbn (int $bookId, int $isbn, IsbnExtractor $extractor, Isbn $isbnChecker) {
         // вначале пробуем добавить КОРРЕКТ isdn в поля, гд может быть только 1 isdn
-        $isbnCorrectSingleFields = self::CORRECTSINGLEISBLFIELDSTOINSERT;
+        $isbnCorrectSingleFields = MainConfig::CORRECTSINGLEISBLFIELDSTOINSERT;
         try {
             $result = $this->insertIsbn($bookId, $isbn, $isbnCorrectSingleFields);
             if(!is_null($result)) return $result; 
@@ -79,7 +72,7 @@ class Book
             throw new Exception($e->getMessage());
         }
         // если не удалось, добавляем в поля, где может быть несколько isdn
-        $isbnCorrectMultiFields = self::CORRECTMULTIFIELDSTOINSERT;
+        $isbnCorrectMultiFields = MainConfig::CORRECTMULTIFIELDSTOINSERT;
         try {
             $result = $this->updateIsbn($bookId, $isbn, $isbnCorrectMultiFields);
             if(!is_null($result)) return $result; 
@@ -89,6 +82,7 @@ class Book
         }
     }
     
+    // метод, реализующий добавление исбн в таблицу, проверяет, что соответствующее поле пустое
     private function insertIsbn (int $bookId, int $isbn, array $fields) {
         foreach ($fields as $field) {
             $book = $this->getBook($bookId);
@@ -104,6 +98,7 @@ class Book
         }
     }
 
+    // обновляем только подходящие поля, если isbn2 что-то содержит, пробуем записать в следующее
     private function updateIsbn (int $bookId, int $isbn, array $fields) {
         $book = $this->getBook($bookId);
 
@@ -119,7 +114,7 @@ class Book
             }
             else {
                 try {
-                    $isbn = $book->$field . self::ISBNSDEVIDER . $isbn;
+                    $isbn = $book->$field . MainConfig::ISBNSDEVIDER . $isbn;
                     $this->doIsbnFieldUpdate($bookId, $isbn, $field);
                     return $field;
                 }
@@ -132,6 +127,7 @@ class Book
     }
 
 
+    // функция обновления поля в БД
     private function doIsbnFieldUpdate (int $bookId, string $isbn, string $field) {
         if($this->connect) {
             try {
@@ -152,16 +148,17 @@ class Book
         }
     }
 
+    // метод, который проходит по всем полям, где могут храниться исбн и возвращает их в массиве
     private function isbnSearcherInIsbnsFields (Object $book, IsbnExtractor $extractor) {
-        $isbnSingleFields = self::ISBNSINGLEFIELDS;
+        $isbnSingleFields = MainConfig::ISBNSINGLEFIELDS;
         foreach ($isbnSingleFields as $isbnField) {
             if (!is_null($book->$isbnField)) {$extractor->setStringContaining($book->$isbnField);}
             $isbns[$isbnField] = $extractor->getAllIsbns();
             $extractor->reset();
         }
-        $isbnMultiFields = self::ISBNMULTIFIELDS;
+        $isbnMultiFields = MainConfig::ISBNMULTIFIELDS;
         foreach ($isbnMultiFields as $isbnField) {
-            $isbnsRaws = explode(self::ISBNDEVIDER2, $book->$isbnField);
+            $isbnsRaws = explode(MainConfig::ISBNDEVIDER2, $book->$isbnField);
             $counter = 0;
             foreach ($isbnsRaws as $isbnRaw) {
                 if (!is_null($book->$isbnField)) {$extractor->setStringContaining($isbnRaw);}

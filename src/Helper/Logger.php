@@ -3,15 +3,12 @@ namespace App\Helper;
 
 use Exception;
 use App\Helper\FileNameGenerator;
+use App\Config\MainConfig;
 use DateTime;
 
 class Logger extends \Keboola\Csv\CsvWriter
 {
 
-    const LOGFILEEXT = 'csv';
-    const LOGFILEPATH = 'logs';
-    const DATETIMEFORMAT = 'Y-m-d H:i:s';
-    
     private $fileNameGenerator;
     private $logFile;
     private $rowId;
@@ -27,7 +24,7 @@ class Logger extends \Keboola\Csv\CsvWriter
     
     private function createLogFile () : string
     {
-        $this->logFile = $this->fileNameGenerator->getRandomFileName(self::LOGFILEPATH, self::LOGFILEEXT);
+        $this->logFile = $this->fileNameGenerator->getRandomFileName(MainConfig::LOGFILEPATH, MainConfig::LOGFILEEXT);
         return $this->logFile;
     }
     
@@ -35,7 +32,7 @@ class Logger extends \Keboola\Csv\CsvWriter
     {
         $this->rowId++;
         $date = new DateTime();
-        $dateStr = $date->format(self::DATETIMEFORMAT);
+        $dateStr = $date->format(MainConfig::DATETIMEFORMAT);
         array_unshift($row, $this->rowId, $dateStr);
         
         $this->writeRow($row);
