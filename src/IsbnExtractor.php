@@ -131,7 +131,7 @@ class IsbnExtractor
         }
     }
     
-    private function checkIsbn13 (string $subStrContDigits, int $potentialIsbn) :bool 
+    private function checkIsbn13 (string $subStrContDigits, string $potentialIsbn) :bool 
         {
         if (
             !(preg_match('/[^-0-9]/', $subStrContDigits)) and
